@@ -20,7 +20,8 @@ You can clone this code anytime and load the HTML on your browser. Since it was 
 
 
 ## Live version
-https://relaxed-lumiere-34cf37.netlify.app/
+
+- [live-version](https://jose-abel-budgety.netlify.app/)
 
 
 ### Setup
