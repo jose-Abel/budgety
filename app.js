@@ -21,7 +21,9 @@ Improve input field UX
 */
 //BUDGET CONTROLLER
 var budgetController = (function(){
-    
+    const expensesFromLocalData = JSON.parse(localStorage.getItem('exp'))
+    const incomeFromLocalData = JSON.parse(localStorage.getItem('inc'));
+
     var Expense = function(id, description, value){
         this.id = id;
         this.description = description;
@@ -50,14 +52,6 @@ var budgetController = (function(){
         this.value = value;
     };
 
-    var calculateTotal = function(type){
-        var sum = 0;
-        data.allItems[type].forEach(function(cur){
-            sum += cur.value;
-        });
-        data.totals[type] = sum;
-    };
-
     var data = {
         allItems: {
             exp: [],
@@ -69,6 +63,36 @@ var budgetController = (function(){
         },
         budget: 0,
         percentage: -1
+    };
+    if(expensesFromLocalData !== null) {
+        const expensesTypesArray = [];
+        
+        expensesFromLocalData.forEach((expense) => {
+            const newExpense = new Expense(expense.id, expense.description, expense.value);
+            expensesTypesArray.push(newExpense);
+        })
+
+
+        data.allItems.exp = [...expensesTypesArray]
+    }
+
+    if(incomeFromLocalData !== null) {
+        const incomesTypesArray = [];
+        
+        incomeFromLocalData.forEach((income) => {
+            const newIncome = new Income(income.id, income.description, income.value);
+            incomesTypesArray.push(newIncome);
+        })
+
+        data.allItems.inc = [...incomesTypesArray];
+    }
+
+    var calculateTotal = function(type){
+        var sum = 0;
+        data.allItems[type].forEach(function(cur){
+            sum += cur.value;
+        });
+        data.totals[type] = sum;
     };
 
     return {
@@ -94,6 +118,11 @@ var budgetController = (function(){
             //Push it into our data structure
             data.allItems[type].push(newItem);
 
+            // Update the localstorage
+            const allItemsToStore = data.allItems[type];
+
+            localStorage.setItem(`${type}`, JSON.stringify(allItemsToStore));
+
             //Return the new element
             return newItem;
         },
@@ -111,13 +140,15 @@ var budgetController = (function(){
                 data.allItems[type].splice(index, 1);
             }
 
+            // Update the localstorage
+            localStorage.setItem(`${type}`, JSON.stringify(data.allItems[type]));
         },
 
         calculateBudget: function(){
-
             //Calculate total income and expenses
             calculateTotal('exp');
             calculateTotal('inc');
+
             //Calculate the budget: income - expenses
             data.budget = data.totals.inc - data.totals.exp;
             // Calculate the percentage of income that we spent
@@ -228,7 +259,8 @@ var UIController = (function(){
 
                 html = '<div class="item clearfix" id="exp-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__percentage">21%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>'
             }
-
+    
+            //Insert the HTML into the DOM
             newHtml = html.replace('%id%', obj.id);
             newHtml = newHtml.replace('%description%', obj.description);
             newHtml = newHtml.replace('%value%', formatNumber(obj.value, type));
@@ -236,8 +268,6 @@ var UIController = (function(){
             //Replace the placeholder text with some actual data
 
             document.querySelector(element).insertAdjacentHTML('beforeend', newHtml);
-
-            //Insert the HTML into the DOM
         },
 
         deleteListItem: function(selectorID){
@@ -346,6 +376,27 @@ var controller = (function(budgetCtrl, UICtrl){
         document.querySelector(DOM.container).addEventListener('click', ctrlDeleteItem);
 
         document.querySelector(DOM.inputType).addEventListener('change', UICtrl.changedType);
+
+        // Get the localstorage and setup the UI based on the localstorage data
+        if(localStorage.getItem('inc') !== undefined) {
+            const localDataIncome = JSON.parse(localStorage.getItem('inc'));
+
+            if(localDataIncome !== null) {
+                localDataIncome.forEach((inc) => {
+                    UICtrl.addListItem(inc, 'inc');
+                });
+            }
+        }
+
+        if(localStorage.getItem('exp') !== undefined) {
+            const localDataExpenses = JSON.parse(localStorage.getItem('exp'));
+
+            if(localDataExpenses !== null) {
+                localDataExpenses.forEach((exp) => {
+                    UICtrl.addListItem(exp, 'exp');
+                })
+            }
+        }
     };
     
     var updateBudget = function(){
@@ -417,15 +468,14 @@ var controller = (function(budgetCtrl, UICtrl){
     };
 
     return {
-        init: function(){
+        init: function(){            
             console.log('Application has started');
+            
+            updateBudget();
+            updatePercentages();
+
             UICtrl.displayMonth();
-            UICtrl.displayBudget({
-                budget: 0,
-                totalInc: 0,
-                totalExp: 0,
-                percentage: -1
-            });
+
             setupEventListeners();
         }
     }
